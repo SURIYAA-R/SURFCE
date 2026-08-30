@@ -341,6 +341,7 @@ fun LibraryScreen(
                                 onClick = { viewModel.playSong(song, sortedSongs) },
                                 onFavoriteToggle = { viewModel.toggleFavorite(song) },
                                 onAddToQueue = { viewModel.addToQueue(song) },
+                                onPlayNext = { viewModel.playNextInQueue(song) },
                                 onAddToPlaylist = { viewModel.setSelectedSongForPlaylist(song) }
                             )
                         }
@@ -365,9 +366,11 @@ fun LibraryScreen(
                         items(albums, key = { it }) { album ->
                             val albumSongs = allSongs.filter { it.album == album }
                             val artist = albumSongs.firstOrNull()?.artist ?: "Various Artists"
+                            val artUri = albumSongs.firstOrNull { !it.albumArtUri.isNullOrBlank() }?.albumArtUri
                             AlbumCard(
                                 albumName = album,
                                 artistName = artist,
+                                artUri = artUri,
                                 onClick = { onNavigateToAlbum(album) }
                             )
                         }
@@ -545,6 +548,7 @@ fun LibraryScreen(
                                 onClick = { viewModel.playSong(song, favoriteSongs) },
                                 onFavoriteToggle = { viewModel.toggleFavorite(song) },
                                 onAddToQueue = { viewModel.addToQueue(song) },
+                                onPlayNext = { viewModel.playNextInQueue(song) },
                                 onAddToPlaylist = { viewModel.setSelectedSongForPlaylist(song) }
                             )
                         }
@@ -565,6 +569,7 @@ fun LibraryScreen(
                             onClick = { viewModel.playSong(song, recentlyAdded) },
                             onFavoriteToggle = { viewModel.toggleFavorite(song) },
                             onAddToQueue = { viewModel.addToQueue(song) },
+                            onPlayNext = { viewModel.playNextInQueue(song) },
                             onAddToPlaylist = { viewModel.setSelectedSongForPlaylist(song) }
                         )
                     }

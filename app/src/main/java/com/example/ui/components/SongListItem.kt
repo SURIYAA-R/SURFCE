@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -61,6 +62,7 @@ fun SongListItem(
     onAddToQueue: () -> Unit,
     onAddToPlaylist: () -> Unit,
     modifier: Modifier = Modifier,
+    onPlayNext: (() -> Unit)? = null,
     showTrackNumber: Boolean = false
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -190,6 +192,15 @@ fun SongListItem(
                         onClick()
                     }
                 )
+                if (onPlayNext != null) {
+                    DropdownMenuItem(
+                        text = { Text("Play Next", color = MaterialTheme.colorScheme.onSurface) },
+                        onClick = {
+                            menuExpanded = false
+                            onPlayNext()
+                        }
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text("Add to Queue", color = MaterialTheme.colorScheme.onSurface) },
                     onClick = {
@@ -230,14 +241,7 @@ fun SongThumbnail(
             else -> null
         }
 
-        if (drawableResId != null) {
-            Image(
-                painter = painterResource(id = drawableResId),
-                contentDescription = song.title,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        } else if (!artUri.isNullOrBlank() && !artUri.startsWith("drawable://")) {
+        if (!artUri.isNullOrBlank() && !artUri.startsWith("drawable://")) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(artUri)
@@ -247,13 +251,35 @@ fun SongThumbnail(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-        } else {
-            Icon(
-                imageVector = Icons.Default.MusicNote,
-                contentDescription = null,
-                tint = PrimaryBlue7692FF,
-                modifier = Modifier.size(24.dp)
+        } else if (drawableResId != null) {
+            Image(
+                painter = painterResource(id = drawableResId),
+                contentDescription = song.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
+        } else {
+            // Stylized artistic gradient thumbnail
+            val hash = (song.album + song.artist).hashCode()
+            val gradientColors = when (Math.abs(hash) % 4) {
+                0 -> listOf(PrimaryBlue7692FF, Color(0xFF2B7878))
+                1 -> listOf(Color(0xFF2B7878), Color(0xFF0F3838))
+                2 -> listOf(PrimaryBlue7692FF, Color(0xFF1E3A5F))
+                else -> listOf(Color(0xFF388E8E), PrimaryBlue7692FF)
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.linearGradient(gradientColors)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MusicNote,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
     }
 }

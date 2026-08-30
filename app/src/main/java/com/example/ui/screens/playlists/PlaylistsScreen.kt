@@ -395,6 +395,7 @@ fun PlaylistDetailScreen(
                     onClick = { viewModel.playSong(song, playlistSongs) },
                     onFavoriteToggle = { viewModel.toggleFavorite(song) },
                     onAddToQueue = { viewModel.addToQueue(song) },
+                    onPlayNext = { viewModel.playNextInQueue(song) },
                     onAddToPlaylist = { viewModel.setSelectedSongForPlaylist(song) },
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )

@@ -18,8 +18,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material3.Card
@@ -41,12 +43,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.R
 import com.example.data.model.Playlist
 import com.example.ui.theme.PrimaryBlue7692FF
@@ -189,8 +194,10 @@ fun AlbumCard(
     albumName: String,
     artistName: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    artUri: String? = null
 ) {
+    val context = LocalContext.current
     Card(
         modifier = modifier
             .width(150.dp)
@@ -208,19 +215,73 @@ fun AlbumCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(140.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
             ) {
                 val coverRes = when {
                     albumName.contains("Velvet") -> R.drawable.img_cover_neon_echoes
                     albumName.contains("Resonant") -> R.drawable.img_cover_deep_focus
-                    else -> R.drawable.img_cover_midnight_waves
+                    albumName.contains("Midnight") || albumName.contains("Oceanic") -> R.drawable.img_cover_midnight_waves
+                    else -> null
                 }
 
-                Image(
-                    painter = painterResource(id = coverRes),
-                    contentDescription = albumName,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                if (!artUri.isNullOrBlank() && !artUri.startsWith("drawable://")) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(artUri)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = albumName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else if (coverRes != null) {
+                    Image(
+                        painter = painterResource(id = coverRes),
+                        contentDescription = albumName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Stylized artistic album cover
+                    val hash = albumName.hashCode()
+                    val gradientColors = when (Math.abs(hash) % 4) {
+                        0 -> listOf(PrimaryBlue7692FF, Color(0xFF1E3A5F))
+                        1 -> listOf(Color(0xFF2B7878), Color(0xFF0F3838))
+                        2 -> listOf(PrimaryBlue7692FF, Color(0xFF2B7878))
+                        else -> listOf(Color(0xFF388E8E), PrimaryBlue7692FF)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.linearGradient(gradientColors)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Album,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.9f),
+                                modifier = Modifier.size(42.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = albumName.take(12),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    letterSpacing = 0.5.sp
+                                ),
+                                color = Color.White.copy(alpha = 0.85f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
             }
 
             Column(

@@ -278,6 +278,38 @@ class AudioPlayerEngine(private val context: Context) {
         _playbackState.update { it.copy(queue = updatedQueue) }
     }
 
+    fun playNextInQueue(song: Song) {
+        val state = _playbackState.value
+        val updatedQueue = state.queue.toMutableList()
+        val insertIndex = (state.queueIndex + 1).coerceAtMost(updatedQueue.size)
+        updatedQueue.add(insertIndex, song)
+        _playbackState.update { it.copy(queue = updatedQueue) }
+    }
+
+    fun addSongsToQueue(songs: List<Song>) {
+        if (songs.isEmpty()) return
+        val state = _playbackState.value
+        val updatedQueue = state.queue.toMutableList().apply { addAll(songs) }
+        _playbackState.update { it.copy(queue = updatedQueue) }
+    }
+
+    fun updateSongFavoriteStatus(songId: String, isFavorite: Boolean) {
+        _playbackState.update { state ->
+            val updatedCurrent = if (state.currentSong?.id == songId) {
+                state.currentSong.copy(isFavorite = isFavorite)
+            } else {
+                state.currentSong
+            }
+            val updatedQueue = state.queue.map { s ->
+                if (s.id == songId) s.copy(isFavorite = isFavorite) else s
+            }
+            state.copy(
+                currentSong = updatedCurrent,
+                queue = updatedQueue
+            )
+        }
+    }
+
     fun removeFromQueue(index: Int) {
         val state = _playbackState.value
         if (index in state.queue.indices) {
@@ -379,6 +411,7 @@ class AudioPlayerEngine(private val context: Context) {
         try {
             syntheticTrack?.pause()
             syntheticTrack?.flush()
+            syntheticTrack?.stop()
             syntheticTrack?.release()
         } catch (_: Exception) {}
         syntheticTrack = null
@@ -386,8 +419,13 @@ class AudioPlayerEngine(private val context: Context) {
 
     private fun stopCurrentPlayback() {
         try {
-            mediaPlayer?.stop()
-            mediaPlayer?.release()
+            mediaPlayer?.let { mp ->
+                if (mp.isPlaying) {
+                    mp.stop()
+                }
+                mp.reset()
+                mp.release()
+            }
         } catch (_: Exception) {}
         mediaPlayer = null
         stopSyntheticAudio()

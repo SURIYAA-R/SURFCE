@@ -128,57 +128,63 @@ fun MainScreen(
                     }
 
                     // Bottom Navigation Bar
-                    if (showBottomBar) {
-                        NavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-                            tonalElevation = 8.dp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                                .testTag("bottom_nav_bar")
-                        ) {
-                            bottomNavScreens.forEach { screen ->
-                                val isSelected = currentRoute == screen.route
-                                NavigationBarItem(
-                                    selected = isSelected,
-                                    onClick = {
-                                        if (currentRoute != screen.route) {
-                                            navController.navigate(screen.route) {
-                                                popUpTo(navController.graph.findStartDestination().id) {
-                                                    saveState = true
-                                                }
-                                                launchSingleTop = true
-                                                restoreState = true
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                        tonalElevation = 8.dp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                            .testTag("bottom_nav_bar")
+                    ) {
+                        bottomNavScreens.forEach { screen ->
+                            val isSelected = currentRoute == screen.route && !isFullPlayerExpanded
+                            NavigationBarItem(
+                                selected = isSelected,
+                                onClick = {
+                                    // Shrink full player page if expanded
+                                    if (isFullPlayerExpanded) {
+                                        viewModel.setFullPlayerExpanded(false)
+                                    }
+                                    // Dismiss queue sheet if visible
+                                    if (isQueueSheetVisible) {
+                                        viewModel.setQueueSheetVisible(false)
+                                    }
+                                    if (currentRoute != screen.route) {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
                                             }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                    },
-                                    icon = {
-                                        Icon(
-                                            imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
-                                            contentDescription = screen.title,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                    },
-                                    label = {
-                                        Text(
-                                            text = screen.title.uppercase(),
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontSize = 9.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                letterSpacing = 0.5.sp
-                                            )
-                                        )
-                                    },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = PrimaryBlue7692FF,
-                                        selectedTextColor = PrimaryBlue7692FF,
-                                        indicatorColor = PrimaryBlue7692FF.copy(alpha = 0.15f),
-                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
+                                        contentDescription = screen.title,
+                                        modifier = Modifier.size(22.dp)
                                     )
+                                },
+                                label = {
+                                    Text(
+                                        text = screen.title.uppercase(),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontSize = 9.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            letterSpacing = 0.5.sp
+                                        )
+                                    )
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = PrimaryBlue7692FF,
+                                    selectedTextColor = PrimaryBlue7692FF,
+                                    indicatorColor = PrimaryBlue7692FF.copy(alpha = 0.15f),
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            }
+                            )
                         }
                     }
                 }

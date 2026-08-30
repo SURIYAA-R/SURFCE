@@ -185,6 +185,7 @@ fun SearchScreen(
                         onClick = { viewModel.playSong(song, filteredSongs) },
                         onFavoriteToggle = { viewModel.toggleFavorite(song) },
                         onAddToQueue = { viewModel.addToQueue(song) },
+                        onPlayNext = { viewModel.playNextInQueue(song) },
                         onAddToPlaylist = { viewModel.setSelectedSongForPlaylist(song) }
                     )
                 }

@@ -20,13 +20,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -37,11 +40,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.R
 import com.example.ui.components.SongListItem
 import com.example.ui.theme.PrimaryBlue7692FF
@@ -54,9 +60,11 @@ fun AlbumDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val allSongs by viewModel.allSongs.collectAsState()
     val albumSongs = allSongs.filter { it.album == albumName }
     val artist = albumSongs.firstOrNull()?.artist ?: "Unknown Artist"
+    val firstArtUri = albumSongs.firstOrNull { !it.albumArtUri.isNullOrBlank() }?.albumArtUri
     val playbackState by viewModel.playbackState.collectAsState()
 
     val totalDurationMs = albumSongs.sumOf { it.durationMs }
@@ -76,29 +84,66 @@ fun AlbumDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(280.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
             ) {
                 val coverRes = when {
                     albumName.contains("Velvet") -> R.drawable.img_cover_neon_echoes
                     albumName.contains("Resonant") -> R.drawable.img_cover_deep_focus
-                    else -> R.drawable.img_cover_midnight_waves
+                    albumName.contains("Midnight") || albumName.contains("Oceanic") -> R.drawable.img_cover_midnight_waves
+                    else -> null
                 }
 
-                Image(
-                    painter = painterResource(id = coverRes),
-                    contentDescription = albumName,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                if (!firstArtUri.isNullOrBlank() && !firstArtUri.startsWith("drawable://")) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(firstArtUri)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = albumName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else if (coverRes != null) {
+                    Image(
+                        painter = painterResource(id = coverRes),
+                        contentDescription = albumName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Stylized procedural gradient cover
+                    val hash = albumName.hashCode()
+                    val gradientColors = when (Math.abs(hash) % 4) {
+                        0 -> listOf(PrimaryBlue7692FF, Color(0xFF1E3A5F))
+                        1 -> listOf(Color(0xFF2B7878), Color(0xFF0F3838))
+                        2 -> listOf(PrimaryBlue7692FF, Color(0xFF2B7878))
+                        else -> listOf(Color(0xFF388E8E), PrimaryBlue7692FF)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.linearGradient(gradientColors)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Album,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(72.dp)
+                        )
+                    }
+                }
 
-                // Bottom Overlay Gradient
+                // Bottom Overlay Gradient for clean text readability
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color(0x88000000),
-                                    if (isDark) Color(0x66080C14) else Color(0x66F4F6FC),
+                                    Color(0x77000000),
+                                    if (isDark) Color(0x77080C14) else Color(0x77F4F6FC),
                                     MaterialTheme.colorScheme.background
                                 )
                             )
@@ -109,6 +154,7 @@ fun AlbumDetailScreen(
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier
+                        .align(Alignment.TopStart)
                         .padding(start = 16.dp, top = 16.dp)
                         .size(40.dp)
                         .clip(CircleShape)
@@ -146,13 +192,14 @@ fun AlbumDetailScreen(
             }
         }
 
-        // Action Buttons Row (Play All, Shuffle)
+        // Action Buttons Row (Play All, Shuffle, Add Album to Queue)
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
                     onClick = {
@@ -165,8 +212,8 @@ fun AlbumDetailScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Play All", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Play All", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 }
 
                 Button(
@@ -184,8 +231,22 @@ fun AlbumDetailScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.Shuffle, contentDescription = null, tint = PrimaryBlue7692FF)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Shuffle", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Shuffle", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        if (albumSongs.isNotEmpty()) {
+                            viewModel.addAlbumToQueue(albumSongs)
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue7692FF.copy(alpha = 0.5f))
+                ) {
+                    Icon(Icons.Default.QueueMusic, contentDescription = "Add album to queue", tint = PrimaryBlue7692FF)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("+ Queue", color = PrimaryBlue7692FF, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                 }
             }
         }
@@ -199,6 +260,7 @@ fun AlbumDetailScreen(
                 onClick = { viewModel.playSong(song, albumSongs) },
                 onFavoriteToggle = { viewModel.toggleFavorite(song) },
                 onAddToQueue = { viewModel.addToQueue(song) },
+                onPlayNext = { viewModel.playNextInQueue(song) },
                 onAddToPlaylist = { viewModel.setSelectedSongForPlaylist(song) },
                 showTrackNumber = true,
                 modifier = Modifier.padding(horizontal = 8.dp)

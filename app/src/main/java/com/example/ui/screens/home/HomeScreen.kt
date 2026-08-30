@@ -435,6 +435,7 @@ fun HomeScreen(
                 onClick = { viewModel.playSong(song, mostPlayed) },
                 onFavoriteToggle = { viewModel.toggleFavorite(song) },
                 onAddToQueue = { viewModel.addToQueue(song) },
+                onPlayNext = { viewModel.playNextInQueue(song) },
                 onAddToPlaylist = { viewModel.setSelectedSongForPlaylist(song) },
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
@@ -462,6 +463,7 @@ fun HomeScreen(
                     onClick = { viewModel.playSong(song, favorites) },
                     onFavoriteToggle = { viewModel.toggleFavorite(song) },
                     onAddToQueue = { viewModel.addToQueue(song) },
+                    onPlayNext = { viewModel.playNextInQueue(song) },
                     onAddToPlaylist = { viewModel.setSelectedSongForPlaylist(song) },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )

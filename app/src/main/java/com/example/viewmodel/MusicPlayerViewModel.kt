@@ -161,21 +161,25 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
         playerEngine.clearQueue()
     }
 
+    fun playNextInQueue(song: Song) {
+        playerEngine.playNextInQueue(song)
+    }
+
+    fun addAlbumToQueue(songs: List<Song>) {
+        playerEngine.addSongsToQueue(songs)
+    }
+
     fun reorderQueue(fromIndex: Int, toIndex: Int) {
         playerEngine.reorderQueue(fromIndex, toIndex)
     }
 
-    // Favorite actions
+    // Favorite actions - keeps song playing uninterrupted
     fun toggleFavorite(song: Song) {
         viewModelScope.launch {
-            musicRepo.toggleSongFavorite(song.id, !song.isFavorite)
-            if (playbackState.value.currentSong?.id == song.id) {
-                // Keep player state in sync
-                val current = playbackState.value.currentSong
-                if (current != null) {
-                    playerEngine.playSong(current.copy(isFavorite = !song.isFavorite), playbackState.value.queue)
-                }
-            }
+            val newFavStatus = !song.isFavorite
+            musicRepo.toggleSongFavorite(song.id, newFavStatus)
+            // Seamless in-place update without restarting playback or seeking
+            playerEngine.updateSongFavoriteStatus(song.id, newFavStatus)
         }
     }
 

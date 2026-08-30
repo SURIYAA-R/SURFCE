@@ -24,10 +24,11 @@ import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Timer
@@ -87,7 +88,6 @@ fun ProfileScreen(
     val collabPlaylists by viewModel.collaborativePlaylists.collectAsState()
     val pendingSyncCount by viewModel.pendingSyncCount.collectAsState()
 
-    var isEditNameOpen by remember { mutableStateOf(false) }
     var eqMenuOpen by remember { mutableStateOf(false) }
     var sleepTimerMenuOpen by remember { mutableStateOf(false) }
 
@@ -104,7 +104,7 @@ fun ProfileScreen(
             .testTag("profile_screen"),
         contentPadding = PaddingValues(bottom = 100.dp)
     ) {
-        // Profile Header Card
+        // Fresh Profile & Space Header Card (No personal names)
         item {
             Box(
                 modifier = Modifier
@@ -125,42 +125,26 @@ fun ProfileScreen(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = (userSettings?.userName ?: "Alex").take(1).uppercase(),
-                            style = MaterialTheme.typography.displayMedium.copy(
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = Color.White
+                        Icon(
+                            imageVector = Icons.Default.Headphones,
+                            contentDescription = "Audio Space",
+                            tint = Color.White,
+                            modifier = Modifier.size(36.dp)
                         )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = userSettings?.userName ?: "Alex Rivera",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        IconButton(
-                            onClick = { isEditNameOpen = true },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit Name",
-                                tint = SoftBlueSecondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Local Audio Hub",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
-                        text = "SURFCE Local Audiophile",
+                        text = "SURFCE Personal Soundspace",
                         style = MaterialTheme.typography.bodySmall,
                         color = PrimaryBlue7692FF
                     )
@@ -176,7 +160,7 @@ fun ProfileScreen(
                             .padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        StatItem(count = allSongs.size.toString(), label = "Songs")
+                        StatItem(count = allSongs.size.toString(), label = "Tracks")
                         Box(
                             modifier = Modifier
                                 .width(1.dp)
@@ -190,7 +174,7 @@ fun ProfileScreen(
                                 .height(30.dp)
                                 .background(MaterialTheme.colorScheme.outline)
                         )
-                        StatItem(count = collabPlaylists.size.toString(), label = "Collab Rooms")
+                        StatItem(count = collabPlaylists.size.toString(), label = "Live Rooms")
                     }
                 }
             }
@@ -531,58 +515,10 @@ fun ProfileScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "A sleek offline-first personal audio player powered entirely by your local files with organic waveform visualizer scrubbing, vibrant #7692FF styling, and seamless Light & Dark themes.",
+                        text = "A sleek offline-first personal audio player powered entirely by your local files with organic waveform visualizer scrubbing, vibrant #45A9A9 oceanic styling, and seamless Light & Dark themes.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-            }
-        }
-    }
-
-    // Edit Name Dialog
-    if (isEditNameOpen) {
-        var nameInput by remember { mutableStateOf(userSettings?.userName ?: "") }
-        Dialog(onDismissRequest = { isEditNameOpen = false }) {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Edit Display Name", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = nameInput,
-                        onValueChange = { nameInput = it },
-                        label = { Text("Name") },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryBlue7692FF,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { isEditNameOpen = false }) {
-                            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                if (nameInput.isNotBlank()) {
-                                    viewModel.updateUserName(nameInput.trim())
-                                }
-                                isEditNameOpen = false
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue7692FF)
-                        ) {
-                            Text("Save", color = Color.White)
-                        }
-                    }
                 }
             }
         }
