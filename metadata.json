@@ -1,0 +1,7 @@
+{
+  "name": "SURFCE",
+  "description": "A personal, offline-first music player with dark blue aesthetic, flowing sound waveforms, local library scanning, online sync, and collaborative playlists.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
