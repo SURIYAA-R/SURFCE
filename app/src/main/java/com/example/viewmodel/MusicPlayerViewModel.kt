@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 
 class MusicPlayerViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val playerEngine = AudioPlayerEngine(application)
+    private val playerEngine = AudioPlayerEngine.getInstance(application)
     private val musicRepo = MusicRepository(application)
     private val collabRepo = CollaborationRepository(application)
     private val settingsRepo = SettingsRepository(application)
@@ -35,52 +35,52 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
     val playbackState: StateFlow<PlaybackState> = playerEngine.playbackState
 
     val allSongs: StateFlow<List<Song>> = musicRepo.allSongs
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val favoriteSongs: StateFlow<List<Song>> = musicRepo.favoriteSongs
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val recentlyPlayedSongs: StateFlow<List<Song>> = musicRepo.recentlyPlayedSongs
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val recentlyAddedSongs: StateFlow<List<Song>> = musicRepo.recentlyAddedSongs
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val mostPlayedSongs: StateFlow<List<Song>> = musicRepo.mostPlayedSongs
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val totalSongCount: StateFlow<Int> = musicRepo.totalSongCount
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     val allPlaylists: StateFlow<List<Playlist>> = musicRepo.allPlaylists
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val personalPlaylists: StateFlow<List<Playlist>> = musicRepo.personalPlaylists
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val collaborativePlaylists: StateFlow<List<Playlist>> = musicRepo.collaborativePlaylists
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val albums: StateFlow<List<String>> = musicRepo.albums
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val artists: StateFlow<List<String>> = musicRepo.artists
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val genres: StateFlow<List<String>> = musicRepo.genres
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val folders: StateFlow<List<String>> = musicRepo.folders
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val userSettings: StateFlow<UserSettings?> = settingsRepo.userSettings
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val pendingSyncCount: StateFlow<Int> = collabRepo.pendingSyncCount
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     val recentActivities: StateFlow<List<CollaborationActivity>> = collabRepo.allRecentActivities
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     // UI View State
     private val _isFullPlayerExpanded = MutableStateFlow(false)

@@ -1,12 +1,22 @@
 package com.example.player
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
+import android.media.MediaMetadata
 import android.media.MediaPlayer
+import android.media.session.MediaSession
+import android.media.session.PlaybackState as MediaPlaybackState
 import android.net.Uri
+import android.os.Build
 import android.util.Log
+import android.view.KeyEvent
 import com.example.data.local.WavyxDatabase
 import com.example.data.model.PlaybackState
 import com.example.data.model.RepeatMode
@@ -24,7 +34,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.sin
 
-class AudioPlayerEngine(private val context: Context) {
+class AudioPlayerEngine private constructor(private val context: Context) {
 
     private val database = WavyxDatabase.getDatabase(context)
     private val songDao = database.songDao()
@@ -35,11 +45,254 @@ class AudioPlayerEngine(private val context: Context) {
     private var syntheticToneJob: Job? = null
     private var progressPollingJob: Job? = null
 
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var hasAudioFocus = false
+    private var resumeOnFocusGain = false
+
+    private var mediaSession: MediaSession? = null
+    private var isNoisyReceiverRegistered = false
+
+    private val noisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                // Headset unplugged or Bluetooth earbuds disconnected -> pause playback
+                Log.d("AudioPlayerEngine", "Audio becoming noisy (headset disconnected) - pausing playback")
+                pause()
+            }
+        }
+    }
+
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
+    companion object {
+        @Volatile
+        private var INSTANCE: AudioPlayerEngine? = null
+
+        fun getInstance(context: Context): AudioPlayerEngine {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: AudioPlayerEngine(context.applicationContext).also { INSTANCE = it }
+            }
+        }
+    }
+
     init {
+        setupMediaSession()
         startProgressAndWaveformUpdater()
+    }
+
+    fun getMediaSessionToken(): MediaSession.Token? = mediaSession?.sessionToken
+
+    private fun setupMediaSession() {
+        try {
+            mediaSession = MediaSession(context, "SURFCE_AudioSession").apply {
+                setFlags(
+                    MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or
+                    MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
+                )
+
+                setCallback(object : MediaSession.Callback() {
+                    override fun onPlay() {
+                        resume()
+                    }
+
+                    override fun onPause() {
+                        pause()
+                    }
+
+                    override fun onSkipToNext() {
+                        playNext()
+                    }
+
+                    override fun onSkipToPrevious() {
+                        playPrevious()
+                    }
+
+                    override fun onStop() {
+                        pause()
+                    }
+
+                    override fun onSeekTo(pos: Long) {
+                        seekTo(pos)
+                    }
+
+                    override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
+                        val keyEvent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
+                        }
+
+                        if (keyEvent != null && keyEvent.action == KeyEvent.ACTION_DOWN) {
+                            when (keyEvent.keyCode) {
+                                KeyEvent.KEYCODE_HEADSETHOOK,
+                                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                                    togglePlayPause()
+                                    return true
+                                }
+                                KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                                    resume()
+                                    return true
+                                }
+                                KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                                    pause()
+                                    return true
+                                }
+                                KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                                    playNext()
+                                    return true
+                                }
+                                KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                                    playPrevious()
+                                    return true
+                                }
+                                KeyEvent.KEYCODE_MEDIA_STOP -> {
+                                    pause()
+                                    return true
+                                }
+                            }
+                        }
+                        return super.onMediaButtonEvent(mediaButtonIntent)
+                    }
+                })
+
+                isActive = true
+            }
+        } catch (e: Exception) {
+            Log.e("AudioPlayerEngine", "Failed to initialize MediaSession: ${e.message}")
+        }
+    }
+
+    private fun updateMediaSessionState(isPlaying: Boolean, positionMs: Long) {
+        try {
+            val actions = MediaPlaybackState.ACTION_PLAY or
+                    MediaPlaybackState.ACTION_PAUSE or
+                    MediaPlaybackState.ACTION_PLAY_PAUSE or
+                    MediaPlaybackState.ACTION_SKIP_TO_NEXT or
+                    MediaPlaybackState.ACTION_SKIP_TO_PREVIOUS or
+                    MediaPlaybackState.ACTION_SEEK_TO or
+                    MediaPlaybackState.ACTION_STOP
+
+            val state = if (isPlaying) MediaPlaybackState.STATE_PLAYING else MediaPlaybackState.STATE_PAUSED
+
+            val playbackStateBuilder = MediaPlaybackState.Builder()
+                .setActions(actions)
+                .setState(state, positionMs, 1.0f)
+
+            mediaSession?.setPlaybackState(playbackStateBuilder.build())
+        } catch (e: Exception) {
+            Log.e("AudioPlayerEngine", "Error updating MediaSession state: ${e.message}")
+        }
+    }
+
+    private fun updateMediaSessionMetadata(song: Song) {
+        try {
+            val metadataBuilder = MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, song.title)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, song.artist)
+                .putString(MediaMetadata.METADATA_KEY_ALBUM, song.album)
+                .putLong(MediaMetadata.METADATA_KEY_DURATION, song.durationMs)
+
+            mediaSession?.setMetadata(metadataBuilder.build())
+        } catch (e: Exception) {
+            Log.e("AudioPlayerEngine", "Error updating MediaSession metadata: ${e.message}")
+        }
+    }
+
+    private fun requestAudioFocus(): Boolean {
+        if (hasAudioFocus) return true
+
+        val focusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+            when (focusChange) {
+                AudioManager.AUDIOFOCUS_LOSS -> {
+                    Log.d("AudioPlayerEngine", "AudioFocus: Loss")
+                    hasAudioFocus = false
+                    resumeOnFocusGain = false
+                    pause()
+                }
+                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                    Log.d("AudioPlayerEngine", "AudioFocus: Loss transient")
+                    hasAudioFocus = false
+                    if (_playbackState.value.isPlaying) {
+                        resumeOnFocusGain = true
+                        pause()
+                    }
+                }
+                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                    Log.d("AudioPlayerEngine", "AudioFocus: Duck")
+                    setVolume(_playbackState.value.volume * 0.3f)
+                }
+                AudioManager.AUDIOFOCUS_GAIN -> {
+                    Log.d("AudioPlayerEngine", "AudioFocus: Gain")
+                    hasAudioFocus = true
+                    setVolume(1.0f)
+                    if (resumeOnFocusGain) {
+                        resumeOnFocusGain = false
+                        resume()
+                    }
+                }
+            }
+        }
+
+        val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(attributes)
+                .setAcceptsDelayedFocusGain(true)
+                .setOnAudioFocusChangeListener(focusChangeListener)
+                .build()
+
+            audioFocusRequest = request
+            audioManager.requestAudioFocus(request)
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.requestAudioFocus(
+                focusChangeListener,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN
+            )
+        }
+
+        hasAudioFocus = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+        return hasAudioFocus
+    }
+
+    private fun abandonAudioFocus() {
+        if (!hasAudioFocus) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(null)
+        }
+        hasAudioFocus = false
+    }
+
+    private fun registerNoisyReceiver() {
+        if (!isNoisyReceiverRegistered) {
+            try {
+                val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+                context.registerReceiver(noisyReceiver, filter)
+                isNoisyReceiverRegistered = true
+            } catch (e: Exception) {
+                Log.e("AudioPlayerEngine", "Could not register noisy receiver: ${e.message}")
+            }
+        }
+    }
+
+    private fun unregisterNoisyReceiver() {
+        if (isNoisyReceiverRegistered) {
+            try {
+                context.unregisterReceiver(noisyReceiver)
+                isNoisyReceiverRegistered = false
+            } catch (_: Exception) {}
+        }
     }
 
     fun playSong(song: Song, queue: List<Song> = emptyList()) {
@@ -56,6 +309,14 @@ class AudioPlayerEngine(private val context: Context) {
                 isPlaying = true
             )
         }
+
+        requestAudioFocus()
+        registerNoisyReceiver()
+        updateMediaSessionMetadata(song)
+        updateMediaSessionState(true, 0L)
+
+        // Start Foreground Service for background playback and notification controls
+        MediaPlaybackService.startService(context)
 
         startPlayingSource(song)
 
@@ -87,8 +348,10 @@ class AudioPlayerEngine(private val context: Context) {
                                 durationMs = mp.duration.toLong()
                             )
                         }
+                        updateMediaSessionState(true, 0L)
                     }
                     setOnCompletionListener {
+                        Log.d("AudioPlayerEngine", "Song completed naturally, advancing flow")
                         handlePlaybackCompletion()
                     }
                     setOnErrorListener { _, what, extra ->
@@ -107,7 +370,6 @@ class AudioPlayerEngine(private val context: Context) {
     }
 
     private fun fallbackToSynthesizer(song: Song) {
-        // High quality ambient sound wave generator for built-in audio tracks
         stopSyntheticAudio()
         try {
             val sampleRate = 44100
@@ -157,7 +419,7 @@ class AudioPlayerEngine(private val context: Context) {
                         modPhase += (2.0 * PI * 0.2) / sampleRate
                         val chorus = 1.0 + 0.03 * sin(modPhase)
                         val freqL = baseFreq * chorus
-                        val freqR = (baseFreq * 1.5) * chorus // fifth harmony
+                        val freqR = (baseFreq * 1.5) * chorus
 
                         phaseL += (2.0 * PI * freqL) / sampleRate
                         phaseR += (2.0 * PI * freqR) / sampleRate
@@ -198,11 +460,17 @@ class AudioPlayerEngine(private val context: Context) {
             mediaPlayer?.pause()
         } catch (_: Exception) {}
         stopSyntheticAudio()
+        unregisterNoisyReceiver()
+        updateMediaSessionState(false, _playbackState.value.currentPositionMs)
     }
 
     fun resume() {
         val song = _playbackState.value.currentSong ?: return
+        requestAudioFocus()
+        registerNoisyReceiver()
         _playbackState.update { it.copy(isPlaying = true) }
+        MediaPlaybackService.startService(context)
+
         if (mediaPlayer != null) {
             try {
                 mediaPlayer?.start()
@@ -212,6 +480,7 @@ class AudioPlayerEngine(private val context: Context) {
         } else {
             fallbackToSynthesizer(song)
         }
+        updateMediaSessionState(true, _playbackState.value.currentPositionMs)
     }
 
     fun seekTo(positionMs: Long) {
@@ -221,6 +490,7 @@ class AudioPlayerEngine(private val context: Context) {
         try {
             mediaPlayer?.seekTo(clamped.toInt())
         } catch (_: Exception) {}
+        updateMediaSessionState(state.isPlaying, clamped)
     }
 
     fun playNext() {
@@ -347,7 +617,9 @@ class AudioPlayerEngine(private val context: Context) {
                 seekTo(0L)
                 resume()
             }
-            RepeatMode.ALL -> playNext()
+            RepeatMode.ALL -> {
+                playNext()
+            }
             RepeatMode.OFF -> {
                 if (state.queueIndex < state.queue.size - 1) {
                     playNext()
@@ -377,7 +649,6 @@ class AudioPlayerEngine(private val context: Context) {
                     if (currentPos >= state.durationMs && state.durationMs > 0) {
                         launch(Dispatchers.Main) { handlePlaybackCompletion() }
                     } else {
-                        // Generate organic dynamic wave amplitude bars
                         val amplitudes = generateDynamicWaveform(step, state.progress)
                         _playbackState.update {
                             it.copy(
@@ -434,5 +705,13 @@ class AudioPlayerEngine(private val context: Context) {
     fun release() {
         stopCurrentPlayback()
         progressPollingJob?.cancel()
+        unregisterNoisyReceiver()
+        abandonAudioFocus()
+        try {
+            mediaSession?.isActive = false
+            mediaSession?.release()
+            mediaSession = null
+        } catch (_: Exception) {}
+        MediaPlaybackService.stopService(context)
     }
 }

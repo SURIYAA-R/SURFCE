@@ -65,11 +65,14 @@ interface SongDao {
     @Query("SELECT DISTINCT folderName FROM songs WHERE isUnavailable = 0 ORDER BY folderName ASC")
     fun getAllFolders(): Flow<List<String>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSongs(songs: List<Song>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSong(song: Song)
+
+    @Query("SELECT COUNT(*) FROM songs WHERE isUnavailable = 0")
+    suspend fun getSongCountSync(): Int
 
     @Update
     suspend fun updateSong(song: Song)

@@ -25,13 +25,12 @@ class MediaScanner(private val context: Context) {
         if (existingSettings == null) {
             userSettingsDao.insertUserSettings(UserSettings())
         }
-        // Always purge any demo songs / playlists so the library is purely the user's local files
-        songDao.purgeDemoSongs()
-        playlistDao.purgeDemoPlaylists()
-        playlistDao.purgeDemoPlaylistCrossRefs()
 
-        // Automatically scan device storage for local tracks
-        scanDeviceAudioFiles()
+        val existingSongCount = songDao.getSongCountSync()
+        if (existingSongCount == 0) {
+            // First run or empty catalog: scan device storage for local tracks
+            scanDeviceAudioFiles()
+        }
     }
 
     suspend fun scanDeviceAudioFiles(): ScanResult = withContext(Dispatchers.IO) {

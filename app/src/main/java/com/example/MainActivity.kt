@@ -43,8 +43,9 @@ class MainActivity : ComponentActivity() {
                 val permissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestMultiplePermissions()
                 ) { permissions ->
-                    val granted = permissions.values.any { it }
-                    if (granted) {
+                    val audioGranted = permissions[Manifest.permission.READ_MEDIA_AUDIO] == true ||
+                            permissions[Manifest.permission.READ_EXTERNAL_STORAGE] == true
+                    if (audioGranted && viewModel.totalSongCount.value == 0) {
                         viewModel.scanDeviceMusic()
                     }
                 }
@@ -54,6 +55,9 @@ class MainActivity : ComponentActivity() {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                             permissionsToRequest.add(Manifest.permission.READ_MEDIA_AUDIO)
+                        }
+                        if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                            permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
                         }
                     } else {
                         if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {

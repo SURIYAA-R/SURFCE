@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.R
+import com.example.data.model.Song
 import com.example.ui.components.SongListItem
 import com.example.ui.theme.PrimaryBlue7692FF
 import com.example.viewmodel.MusicPlayerViewModel
@@ -62,7 +63,10 @@ fun AlbumDetailScreen(
 ) {
     val context = LocalContext.current
     val allSongs by viewModel.allSongs.collectAsState()
-    val albumSongs = allSongs.filter { it.album == albumName }
+    val albumSongs = allSongs.filter { it.album == albumName }.sortedWith(
+        compareBy<Song> { if (it.trackNumber > 0) it.trackNumber else Int.MAX_VALUE }
+            .thenBy { it.title }
+    )
     val artist = albumSongs.firstOrNull()?.artist ?: "Unknown Artist"
     val firstArtUri = albumSongs.firstOrNull { !it.albumArtUri.isNullOrBlank() }?.albumArtUri
     val playbackState by viewModel.playbackState.collectAsState()

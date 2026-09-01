@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -26,22 +28,28 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.PrimaryBlue7692FF
+import com.example.ui.theme.LightTealAccent
+import com.example.ui.theme.DeepTealAccent
 
 /**
- * SURFCE Brand Logo with extra bright luminous 'S' letter and flowing waveform styling.
- * Adapts seamlessly across both Dark and Light themes with #7692FF accents.
+ * SURFCE Brand Logo with oceanic teal emblem, luminous 'S' wave letter, and flowing waveform styling.
+ * Adapts seamlessly across both Dark and Light themes with #45A9A9 Oceanic Teal accents.
  */
 @Composable
 fun SurfceLogo(
     modifier: Modifier = Modifier,
     fontSize: TextUnit = 24.sp,
+    showEmblem: Boolean = true,
     showWaveBadge: Boolean = true,
     onClick: (() -> Unit)? = null
 ) {
@@ -59,9 +67,9 @@ fun SurfceLogo(
     val sGradient = Brush.linearGradient(
         colors = listOf(
             Color(0xFFFFFFFF), // pure brilliant white highlight
-            Color(0xFF9DE0E0), // soft aqua mint highlight
-            PrimaryBlue7692FF, // #45A9A9
-            Color(0xFF2B7878)  // deep teal
+            LightTealAccent,   // #6EC4C4 soft aqua mint highlight
+            PrimaryBlue7692FF, // #45A9A9 Oceanic Teal
+            DeepTealAccent     // #2B7878 deep companion teal
         )
     )
 
@@ -73,6 +81,37 @@ fun SurfceLogo(
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (showEmblem) {
+            Box(
+                modifier = Modifier
+                    .size((fontSize.value * 1.35f).dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.linearGradient(
+                            listOf(
+                                LightTealAccent.copy(alpha = 0.8f),
+                                PrimaryBlue7692FF.copy(alpha = 0.4f),
+                                DeepTealAccent.copy(alpha = 0.6f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .background(Color(0xFF071213)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.img_surfce_teal_logo_1788271894352),
+                    contentDescription = "SURFCE Logo Emblem",
+                    modifier = Modifier
+                        .size((fontSize.value * 1.25f).dp)
+                        .clip(RoundedCornerShape(7.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+
         // Glowing container for the ultra-bright 'S'
         Box(
             contentAlignment = Alignment.Center,
