@@ -80,7 +80,60 @@ class AudioPlayerEngine private constructor(private val context: Context) {
     init {
         setupMediaSession()
         startProgressAndWaveformUpdater()
+        restoreLastPlaybackState()
     }
+
+    private val prefs by lazy {
+        context.getSharedPreferences("surfce_audio_playback_state", Context.MODE_PRIVATE)
+    }
+
+    private fun persistPlaybackState() {
+        try {
+            val song = _playbackState.value.currentSong ?: return
+            prefs.edit()
+                .putString("last_song_id", song.id)
+                .putLong("last_pos_ms", _playbackState.value.currentPositionMs)
+                .apply()
+        } catch (_: Exception) {}
+    }
+
+    private fun restoreLastPlaybackState() {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val lastSongId = prefs.getString("last_song_id", null)
+                val lastPos = prefs.getLong("last_pos_ms", 0L)
+                val restoredSong = if (lastSongId != null) {
+                    songDao.getSongById(lastSongId)
+                } else {
+                    songDao.getRecentlyPlayedSongsSync().firstOrNull() ?: songDao.getAllSongsSync().firstOrNull()
+                }
+
+                if (restoredSong != null && _playbackState.value.currentSong == null) {
+                    val amplitudes = generateBaseAmplitudes(restoredSong.id.hashCode())
+                    val queue = songDao.getAllSongsSync()
+                    val queueIndex = queue.indexOfFirst { it.id == restoredSong.id }.coerceAtLeast(0)
+                    _playbackState.update {
+                        it.copy(
+                            currentSong = restoredSong,
+                            queue = if (queue.isNotEmpty()) queue else listOf(restoredSong),
+                            queueIndex = queueIndex,
+                            currentPositionMs = lastPos,
+                            durationMs = if (restoredSong.durationMs > 0) restoredSong.durationMs else 180000L,
+                            isPlaying = false,
+                            waveformAmplitudes = amplitudes
+                        )
+                    }
+                    updateMediaSessionMetadata(restoredSong)
+                    updateMediaSessionState(false, lastPos)
+                }
+            } catch (e: Exception) {
+                Log.e("AudioPlayerEngine", "Error restoring playback state: ${e.message}")
+            }
+        }
+    }
+
+    private var lastCompletedSongId: String? = null
+    private var lastCompletionTimestamp: Long = 0L
 
     fun getMediaSessionToken(): MediaSession.Token? = mediaSession?.sessionToken
 
@@ -295,9 +348,12 @@ class AudioPlayerEngine private constructor(private val context: Context) {
         }
     }
 
-    fun playSong(song: Song, queue: List<Song> = emptyList()) {
+    fun playSong(song: Song, queue: List<Song> = emptyList(), targetIndex: Int? = null) {
         val newQueue = if (queue.isNotEmpty()) queue else listOf(song)
-        val queueIndex = newQueue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+        val queueIndex = targetIndex ?: newQueue.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+        lastCompletedSongId = null
+
+        val amplitudes = generateBaseAmplitudes(song.id.hashCode())
 
         _playbackState.update {
             it.copy(
@@ -306,7 +362,8 @@ class AudioPlayerEngine private constructor(private val context: Context) {
                 queueIndex = queueIndex,
                 currentPositionMs = 0L,
                 durationMs = if (song.durationMs > 0) song.durationMs else 180000L,
-                isPlaying = true
+                isPlaying = true,
+                waveformAmplitudes = amplitudes
             )
         }
 
@@ -322,6 +379,7 @@ class AudioPlayerEngine private constructor(private val context: Context) {
 
         scope.launch(Dispatchers.IO) {
             songDao.incrementPlayCount(song.id, System.currentTimeMillis())
+            persistPlaybackState()
         }
     }
 
@@ -462,6 +520,7 @@ class AudioPlayerEngine private constructor(private val context: Context) {
         stopSyntheticAudio()
         unregisterNoisyReceiver()
         updateMediaSessionState(false, _playbackState.value.currentPositionMs)
+        persistPlaybackState()
     }
 
     fun resume() {
@@ -491,6 +550,7 @@ class AudioPlayerEngine private constructor(private val context: Context) {
             mediaPlayer?.seekTo(clamped.toInt())
         } catch (_: Exception) {}
         updateMediaSessionState(state.isPlaying, clamped)
+        persistPlaybackState()
     }
 
     fun playNext() {
@@ -498,13 +558,14 @@ class AudioPlayerEngine private constructor(private val context: Context) {
         if (state.queue.isEmpty()) return
 
         val nextIndex = if (state.shuffleEnabled) {
-            state.queue.indices.filter { it != state.queueIndex }.randomOrNull() ?: 0
+            if (state.queue.size <= 1) 0
+            else state.queue.indices.filter { it != state.queueIndex }.randomOrNull() ?: 0
         } else {
             (state.queueIndex + 1) % state.queue.size
         }
 
         val nextSong = state.queue.getOrNull(nextIndex) ?: return
-        playSong(nextSong, state.queue)
+        playSong(nextSong, state.queue, targetIndex = nextIndex)
     }
 
     fun playPrevious() {
@@ -518,7 +579,11 @@ class AudioPlayerEngine private constructor(private val context: Context) {
 
         val prevIndex = if (state.queueIndex - 1 < 0) state.queue.size - 1 else state.queueIndex - 1
         val prevSong = state.queue.getOrNull(prevIndex) ?: return
-        playSong(prevSong, state.queue)
+        playSong(prevSong, state.queue, targetIndex = prevIndex)
+    }
+
+    fun setShuffleEnabled(enabled: Boolean) {
+        _playbackState.update { it.copy(shuffleEnabled = enabled) }
     }
 
     fun toggleShuffle() {
@@ -610,8 +675,22 @@ class AudioPlayerEngine private constructor(private val context: Context) {
         }
     }
 
+    @Synchronized
     private fun handlePlaybackCompletion() {
+        val now = System.currentTimeMillis()
         val state = _playbackState.value
+        val song = state.currentSong ?: return
+
+        // Guard against duplicate triggers within 1200ms or for the same song
+        if (now - lastCompletionTimestamp < 1200L || lastCompletedSongId == song.id) {
+            Log.d("AudioPlayerEngine", "Ignored redundant completion for song: ${song.title}")
+            return
+        }
+        lastCompletionTimestamp = now
+        lastCompletedSongId = song.id
+
+        if (state.queue.isEmpty()) return
+
         when (state.repeatMode) {
             RepeatMode.ONE -> {
                 seekTo(0L)
@@ -621,11 +700,13 @@ class AudioPlayerEngine private constructor(private val context: Context) {
                 playNext()
             }
             RepeatMode.OFF -> {
-                if (state.queueIndex < state.queue.size - 1) {
-                    playNext()
+                // If the album or queue is completed, repeat from the beginning in order
+                if (state.queueIndex >= state.queue.size - 1) {
+                    Log.d("AudioPlayerEngine", "Album completed. Repeating from track 1 in sequential order.")
+                    val firstSong = state.queue.first()
+                    playSong(firstSong, state.queue, targetIndex = 0)
                 } else {
-                    pause()
-                    seekTo(0L)
+                    playNext()
                 }
             }
         }
@@ -634,45 +715,42 @@ class AudioPlayerEngine private constructor(private val context: Context) {
     private fun startProgressAndWaveformUpdater() {
         progressPollingJob?.cancel()
         progressPollingJob = scope.launch(Dispatchers.Default) {
-            var step = 0
             while (isActive) {
-                delay(120)
-                step++
+                delay(200)
                 val state = _playbackState.value
                 if (state.isPlaying && state.currentSong != null) {
                     val currentPos = if (mediaPlayer != null && mediaPlayer?.isPlaying == true) {
-                        mediaPlayer?.currentPosition?.toLong() ?: (state.currentPositionMs + 120)
+                        mediaPlayer?.currentPosition?.toLong() ?: (state.currentPositionMs + 200)
                     } else {
-                        state.currentPositionMs + 120
+                        state.currentPositionMs + 200
                     }
 
-                    if (currentPos >= state.durationMs && state.durationMs > 0) {
+                    // Only trigger completion from polling for synthetic tone fallback.
+                    // For MediaPlayer, setOnCompletionListener handles completion cleanly without skipping.
+                    if (mediaPlayer == null && currentPos >= state.durationMs && state.durationMs > 0) {
                         launch(Dispatchers.Main) { handlePlaybackCompletion() }
                     } else {
-                        val amplitudes = generateDynamicWaveform(step, state.progress)
                         _playbackState.update {
-                            it.copy(
-                                currentPositionMs = currentPos,
-                                waveformAmplitudes = amplitudes
-                            )
+                            it.copy(currentPositionMs = currentPos)
                         }
                     }
                 } else if (!state.isPlaying && state.waveformAmplitudes.isEmpty()) {
-                    val idleAmplitudes = (0 until 32).map { 0.25f }
+                    val idleAmplitudes = (0 until 36).map { 0.25f }
                     _playbackState.update { it.copy(waveformAmplitudes = idleAmplitudes) }
                 }
             }
         }
     }
 
-    private fun generateDynamicWaveform(step: Int, progress: Float): List<Float> {
+    private fun generateBaseAmplitudes(seed: Int): List<Float> {
         val count = 36
+        val absSeed = kotlin.math.abs(seed)
         return (0 until count).map { i ->
-            val phase = step * 0.15f + i * 0.35f
-            val base = (sin(phase) * 0.5f + 0.5f)
-            val subHarmonic = (sin(phase * 0.5f + 1.2f) * 0.3f)
-            val envelope = (sin((i.toFloat() / count.toFloat()) * PI.toFloat()) * 0.8f + 0.2f)
-            ((base * 0.7f + subHarmonic + 0.15f) * envelope).coerceIn(0.12f, 1.0f)
+            val phase = (absSeed % 50) * 0.12f + i * 0.32f
+            val base = (sin(phase) * 0.45f + 0.55f)
+            val subHarmonic = (sin(phase * 0.6f + 1.1f) * 0.25f)
+            val envelope = (sin((i.toFloat() / count.toFloat()) * PI.toFloat()) * 0.75f + 0.25f)
+            ((base * 0.7f + subHarmonic + 0.15f) * envelope).coerceIn(0.18f, 1.0f)
         }
     }
 

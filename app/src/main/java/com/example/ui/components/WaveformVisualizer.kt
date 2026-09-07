@@ -48,6 +48,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.PrimaryBlue7692FF
+import com.example.ui.theme.LightRubyAccent
+import com.example.ui.theme.DeepRubyAccent
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -96,6 +98,13 @@ fun WaveformDurationTracker(
 
     val activeProgress = if (isDragging) dragProgress else progress
     val effectivePositionMs = if (isDragging) (dragProgress * durationMs).toLong() else currentPositionMs
+
+    val smoothProgress by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = activeProgress,
+        animationSpec = if (isDragging) tween(0) else tween(220, easing = androidx.compose.animation.core.LinearEasing),
+        label = "smooth_waveform_progress"
+    )
+    val displayProgress = if (isDragging) activeProgress else smoothProgress
 
     val isDark = MaterialTheme.colorScheme.background.red < 0.5f
     val surfaceColor = if (isDark) Color(0xFF0F1626) else Color(0xFFFFFFFF)
@@ -180,7 +189,7 @@ fun WaveformDurationTracker(
                 val totalSpacing = spacing * (barCount - 1)
                 val barWidth = ((width - totalSpacing) / barCount).coerceAtLeast(3f)
 
-                val activeIndex = (activeProgress * barCount).toInt().coerceIn(0, barCount - 1)
+                val activeIndex = (displayProgress * barCount).toInt().coerceIn(0, barCount - 1)
 
                 for (i in 0 until barCount) {
                     val amp = amplitudes.getOrNull(i) ?: 0.3f
@@ -199,9 +208,9 @@ fun WaveformDurationTracker(
                     val brush = if (isPlayed) {
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color(0xFF9DE0E0), // lighter tint highlight
-                                PrimaryBlue7692FF, // #45A9A9
-                                Color(0xFF2B7878)  // deep rich teal
+                                LightRubyAccent,
+                                PrimaryBlue7692FF,
+                                DeepRubyAccent
                             ),
                             startY = y,
                             endY = y + barHeight
@@ -209,9 +218,9 @@ fun WaveformDurationTracker(
                     } else {
                         Brush.verticalGradient(
                             colors = if (isDark) {
-                                listOf(PrimaryBlue7692FF.copy(alpha = 0.35f), Color(0x20152C2F))
+                                listOf(PrimaryBlue7692FF.copy(alpha = 0.35f), Color(0x2531363F))
                             } else {
-                                listOf(PrimaryBlue7692FF.copy(alpha = 0.25f), Color(0x1A45A9A9))
+                                listOf(PrimaryBlue7692FF.copy(alpha = 0.25f), Color(0x1A76ABAE))
                             },
                             startY = y,
                             endY = y + barHeight
@@ -227,7 +236,7 @@ fun WaveformDurationTracker(
                 }
 
                 // 3. Glowing Playhead Scrubber Line
-                val playheadX = (width * activeProgress).coerceIn(0f, width)
+                val playheadX = (width * displayProgress).coerceIn(0f, width)
                 val playheadHeight = canvasHeight * 0.85f
                 val playheadY = centerY - (playheadHeight / 2f)
 
@@ -402,9 +411,9 @@ fun OrganicWaveformVisualizer(
                 val brush = if (isPlayed) {
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF9DE0E0),
+                            LightRubyAccent,
                             PrimaryBlue7692FF,
-                            Color(0xFF2B7878)
+                            DeepRubyAccent
                         ),
                         startY = y,
                         endY = y + barHeight
@@ -412,9 +421,9 @@ fun OrganicWaveformVisualizer(
                 } else {
                     Brush.verticalGradient(
                         colors = if (isDark) {
-                            listOf(PrimaryBlue7692FF.copy(alpha = 0.35f), Color(0x20152C2F))
+                            listOf(PrimaryBlue7692FF.copy(alpha = 0.35f), Color(0x2531363F))
                         } else {
-                            listOf(PrimaryBlue7692FF.copy(alpha = 0.22f), Color(0x1545A9A9))
+                            listOf(PrimaryBlue7692FF.copy(alpha = 0.22f), Color(0x1576ABAE))
                         },
                         startY = y,
                         endY = y + barHeight

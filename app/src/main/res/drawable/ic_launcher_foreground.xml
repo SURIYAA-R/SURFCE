@@ -3,6 +3,6 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/img_surfce_teal_logo_1788271894352"
+        android:drawable="@drawable/surfce_slate_logo_1788755214390"
         android:gravity="center" />
 </layer-list>

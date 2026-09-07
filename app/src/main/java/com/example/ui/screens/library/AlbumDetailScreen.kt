@@ -207,7 +207,10 @@ fun AlbumDetailScreen(
             ) {
                 Button(
                     onClick = {
-                        if (albumSongs.isNotEmpty()) viewModel.playSong(albumSongs.first(), albumSongs)
+                        if (albumSongs.isNotEmpty()) {
+                            viewModel.setShuffleEnabled(false)
+                            viewModel.playSong(albumSongs.first(), albumSongs, targetIndex = 0)
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = PrimaryBlue7692FF
@@ -223,8 +226,9 @@ fun AlbumDetailScreen(
                 Button(
                     onClick = {
                         if (albumSongs.isNotEmpty()) {
+                            viewModel.setShuffleEnabled(true)
                             val shuffled = albumSongs.shuffled()
-                            viewModel.playSong(shuffled.first(), shuffled)
+                            viewModel.playSong(shuffled.first(), shuffled, targetIndex = 0)
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -261,7 +265,11 @@ fun AlbumDetailScreen(
                 song = song,
                 isPlaying = playbackState.isPlaying,
                 isCurrentSong = playbackState.currentSong?.id == song.id,
-                onClick = { viewModel.playSong(song, albumSongs) },
+                onClick = {
+                    viewModel.setShuffleEnabled(false)
+                    val index = albumSongs.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+                    viewModel.playSong(song, albumSongs, targetIndex = index)
+                },
                 onFavoriteToggle = { viewModel.toggleFavorite(song) },
                 onAddToQueue = { viewModel.addToQueue(song) },
                 onPlayNext = { viewModel.playNextInQueue(song) },

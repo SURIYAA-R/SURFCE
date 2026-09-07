@@ -42,8 +42,8 @@ import com.example.ui.theme.LightTealAccent
 import com.example.ui.theme.DeepTealAccent
 
 /**
- * SURFCE Brand Logo with oceanic teal emblem, luminous 'S' wave letter, and flowing waveform styling.
- * Adapts seamlessly across both Dark and Light themes with #45A9A9 Oceanic Teal accents.
+ * SURFCE Brand Logo with slate graphite emblem, luminous 'S' wave letter, and flowing waveform styling.
+ * Adapts seamlessly across both Dark and Light themes with #31363F & #76ABAE Glacier Teal accents.
  */
 @Composable
 fun SurfceLogo(
@@ -67,9 +67,9 @@ fun SurfceLogo(
     val sGradient = Brush.linearGradient(
         colors = listOf(
             Color(0xFFFFFFFF), // pure brilliant white highlight
-            LightTealAccent,   // #6EC4C4 soft aqua mint highlight
-            PrimaryBlue7692FF, // #45A9A9 Oceanic Teal
-            DeepTealAccent     // #2B7878 deep companion teal
+            LightTealAccent,   // luminous glacier teal highlight #98C7C9
+            PrimaryBlue7692FF, // glacier teal #76ABAE
+            DeepTealAccent     // #31363F deep slate companion
         )
     )
 
@@ -97,11 +97,11 @@ fun SurfceLogo(
                         ),
                         shape = RoundedCornerShape(8.dp)
                     )
-                    .background(Color(0xFF071213)),
+                    .background(Color(0xFF222831)),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.img_surfce_teal_logo_1788271894352),
+                    painter = painterResource(id = R.drawable.surfce_slate_logo_1788755214390),
                     contentDescription = "SURFCE Logo Emblem",
                     modifier = Modifier
                         .size((fontSize.value * 1.25f).dp)

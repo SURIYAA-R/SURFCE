@@ -12,18 +12,18 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// Dark Theme Color Scheme with #45A9A9 Primary
+// Dark Theme Color Scheme with #31363F & #76ABAE Palette
 private val SurfceDarkColorScheme = darkColorScheme(
     primary = PrimaryBlue7692FF,
-    onPrimary = Color.White,
+    onPrimary = BackgroundBunker222831,
     primaryContainer = DarkNavySurfaceVariant,
-    onPrimaryContainer = LightBlueAccent,
+    onPrimaryContainer = TypographySilverEEEEEE,
     secondary = PrimaryBlue7692FF,
-    onSecondary = DeepCharcoal,
+    onSecondary = BackgroundBunker222831,
     secondaryContainer = DarkNavyCard,
-    onSecondaryContainer = SoftBlueSecondary,
+    onSecondaryContainer = TypographySilverEEEEEE,
     tertiary = CyanAccent,
-    onTertiary = DeepCharcoal,
+    onTertiary = BackgroundBunker222831,
     background = DarkNavyBackground,
     onBackground = TextPrimaryDark,
     surface = DarkNavySurface,
@@ -31,22 +31,22 @@ private val SurfceDarkColorScheme = darkColorScheme(
     surfaceVariant = DarkNavySurfaceVariant,
     onSurfaceVariant = TextSecondaryDark,
     outline = DarkNavyBorder,
-    outlineVariant = Color(0xFF16282A),
+    outlineVariant = Color(0xFF3A414C),
     error = FavoriteRed,
     onError = Color.White
 )
 
-// Light Theme Color Scheme with #45A9A9 Primary
+// Light Theme Color Scheme with #31363F Primary
 private val SurfceLightColorScheme = lightColorScheme(
-    primary = PrimaryBlue7692FF,
+    primary = PrimarySlate31363F,
     onPrimary = Color.White,
     primaryContainer = LightSurfaceVariant,
-    onPrimaryContainer = DeepBlueAccent,
-    secondary = DeepBlueAccent,
+    onPrimaryContainer = BackgroundBunker222831,
+    secondary = GlacierAccent76ABAE,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE4F2F2),
-    onSecondaryContainer = PrimaryBlue7692FF,
-    tertiary = PrimaryBlue7692FF,
+    secondaryContainer = Color(0xFFE2EBEB),
+    onSecondaryContainer = PrimarySlate31363F,
+    tertiary = GlacierAccent76ABAE,
     onTertiary = Color.White,
     background = LightBackground,
     onBackground = TextPrimaryLight,
@@ -55,7 +55,7 @@ private val SurfceLightColorScheme = lightColorScheme(
     surfaceVariant = LightSurfaceVariant,
     onSurfaceVariant = TextSecondaryLight,
     outline = LightBorder,
-    outlineVariant = Color(0xFFC7DFDF),
+    outlineVariant = Color(0xFFCDD3D8),
     error = FavoriteRed,
     onError = Color.White
 )

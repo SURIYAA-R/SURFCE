@@ -1,6 +1,7 @@
 package com.example.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -117,8 +118,18 @@ fun MainScreen(
                         .fillMaxWidth()
                         .windowInsetsPadding(WindowInsets.navigationBars)
                 ) {
-                    // Mini Player (Visible when a song is loaded and full player is not expanded)
-                    if (playbackState.currentSong != null && !isFullPlayerExpanded) {
+                    // Mini Player (Smooth Animated Visibility when a song is loaded)
+                    AnimatedVisibility(
+                        visible = playbackState.currentSong != null && !isFullPlayerExpanded,
+                        enter = slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = tween(durationMillis = 280)
+                        ) + fadeIn(animationSpec = tween(durationMillis = 220)),
+                        exit = slideOutVertically(
+                            targetOffsetY = { it },
+                            animationSpec = tween(durationMillis = 240)
+                        ) + fadeOut(animationSpec = tween(durationMillis = 180))
+                    ) {
                         MiniPlayer(
                             playbackState = playbackState,
                             onTogglePlayPause = { viewModel.togglePlayPause() },
@@ -198,7 +209,11 @@ fun MainScreen(
                 NavHost(
                     navController = navController,
                     startDestination = Screen.Home.route,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    enterTransition = { fadeIn(tween(220)) },
+                    exitTransition = { fadeOut(tween(180)) },
+                    popEnterTransition = { fadeIn(tween(220)) },
+                    popExitTransition = { fadeOut(tween(180)) }
                 ) {
                     composable(Screen.Home.route) {
                         HomeScreen(

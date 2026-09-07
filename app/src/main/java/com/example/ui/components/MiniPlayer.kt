@@ -175,9 +175,15 @@ fun MiniPlayer(
                 }
             }
 
+            val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = playbackState.progress,
+                animationSpec = tween(durationMillis = 220, easing = androidx.compose.animation.core.LinearEasing),
+                label = "mini_progress"
+            )
+
             // Continuous Progress Bar
             LinearProgressIndicator(
-                progress = { playbackState.progress },
+                progress = { animatedProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(2.dp),

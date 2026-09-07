@@ -84,11 +84,12 @@ fun SongListItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (showTrackNumber) {
+            val trackNum = if (song.trackNumber > 1000) song.trackNumber % 1000 else song.trackNumber
             Text(
-                text = "${song.trackNumber}",
-                style = MaterialTheme.typography.bodyMedium,
+                text = if (trackNum > 0) "$trackNum" else "-",
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(24.dp)
+                modifier = Modifier.width(26.dp)
             )
         }
 

@@ -515,7 +515,7 @@ fun ProfileScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "A sleek offline-first personal audio player powered entirely by your local files with organic waveform visualizer scrubbing, vibrant #45A9A9 oceanic styling, and seamless Light & Dark themes.",
+                        text = "A sleek offline-first personal audio player powered entirely by your local files with organic waveform visualizer scrubbing, modern #31363F slate styling with glacier accents, and seamless Light & Dark themes.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

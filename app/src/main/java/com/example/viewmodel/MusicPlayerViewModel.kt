@@ -117,8 +117,12 @@ class MusicPlayerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     // Playback actions
-    fun playSong(song: Song, queue: List<Song> = emptyList()) {
-        playerEngine.playSong(song, queue)
+    fun playSong(song: Song, queue: List<Song> = emptyList(), targetIndex: Int? = null) {
+        playerEngine.playSong(song, queue, targetIndex)
+    }
+
+    fun setShuffleEnabled(enabled: Boolean) {
+        playerEngine.setShuffleEnabled(enabled)
     }
 
     fun togglePlayPause() {

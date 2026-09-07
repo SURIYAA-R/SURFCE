@@ -19,6 +19,12 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE lastPlayedTimestamp > 0 AND isUnavailable = 0 ORDER BY lastPlayedTimestamp DESC LIMIT 20")
     fun getRecentlyPlayedSongs(): Flow<List<Song>>
 
+    @Query("SELECT * FROM songs WHERE lastPlayedTimestamp > 0 AND isUnavailable = 0 ORDER BY lastPlayedTimestamp DESC LIMIT 20")
+    suspend fun getRecentlyPlayedSongsSync(): List<Song>
+
+    @Query("SELECT * FROM songs WHERE isUnavailable = 0 ORDER BY title ASC")
+    suspend fun getAllSongsSync(): List<Song>
+
     @Query("SELECT * FROM songs WHERE isUnavailable = 0 ORDER BY dateAddedTimestamp DESC LIMIT 20")
     fun getRecentlyAddedSongs(): Flow<List<Song>>
 
